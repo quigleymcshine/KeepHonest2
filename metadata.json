@@ -1,0 +1,6 @@
+{
+  "name": "KeepHonest",
+  "description": "Track daily exercise bike rides and alcoholic drinks with scheduled reminders and progress line graphs.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
