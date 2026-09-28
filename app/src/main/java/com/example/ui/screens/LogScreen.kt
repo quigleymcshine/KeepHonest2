@@ -34,6 +34,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.FilledTonalButton
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
@@ -47,7 +48,13 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
+import androidx.compose.material3.AlertDialog
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -61,7 +68,9 @@ import com.example.ui.theme.BikePrimary
 import com.example.ui.theme.DrinkPrimary
 import com.example.ui.theme.SoberGreen
 import com.example.util.DateUtils
+import com.example.util.DurationUtils
 import java.util.Calendar
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
@@ -69,8 +78,8 @@ fun LogScreen(
     formState: LogFormState,
     onDateSelected: (String) -> Unit,
     onBikedTodayChanged: (Boolean) -> Unit,
-    onBikeMinutesChanged: (Int) -> Unit,
-    onAdjustBikeMinutes: (Int) -> Unit,
+    onBikeMinutesChanged: (Float) -> Unit,
+    onAdjustBikeMinutes: (Float) -> Unit,
     onDrinkCountChanged: (Int) -> Unit,
     onAdjustDrinkCount: (Int) -> Unit,
     onDrinkNotesChanged: (String) -> Unit,
@@ -81,6 +90,10 @@ fun LogScreen(
 ) {
     val context = LocalContext.current
     val scrollState = rememberScrollState()
+
+    var showCustomTimeDialog by remember { mutableStateOf(false) }
+    var customMinutesInput by remember { mutableStateOf("") }
+    var customSecondsOption by remember { mutableStateOf(0) }
 
     val today = DateUtils.getTodayDate()
     val yesterday = DateUtils.getYesterdayDate()
@@ -236,69 +249,200 @@ fun LogScreen(
                 }
 
                 if (formState.bikedToday) {
+                    val (currMins, currSecs) = DurationUtils.toMinutesAndSeconds(formState.bikeMinutes)
+
                     Spacer(modifier = Modifier.height(16.dp))
 
-                    // Large Minutes Display & Step Buttons
+                    // Prominent Readout and Primary 30s / 1m Steppers
                     Row(
                         modifier = Modifier.fillMaxWidth(),
                         horizontalArrangement = Arrangement.SpaceBetween,
                         verticalAlignment = Alignment.CenterVertically
                     ) {
-                        IconButton(
-                            onClick = { onAdjustBikeMinutes(-5) },
-                            modifier = Modifier
-                                .size(48.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                                .testTag("bike_minus_5_button")
-                        ) {
-                            Icon(
-                                imageVector = Icons.Default.Remove,
-                                contentDescription = "Decrease bike minutes",
-                                tint = MaterialTheme.colorScheme.onSurface
-                            )
+                        // Minus Steppers
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            OutlinedButton(
+                                onClick = { onAdjustBikeMinutes(-1f) },
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .testTag("bike_minus_1m_button"),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("-1m", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            }
+                            OutlinedButton(
+                                onClick = { onAdjustBikeMinutes(-0.5f) },
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .testTag("bike_minus_30s_button"),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("-30s", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            }
                         }
 
-                        Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                            Row(verticalAlignment = Alignment.Bottom) {
+                        // Time Display (clickable to enter exact time)
+                        Surface(
+                            onClick = {
+                                customMinutesInput = currMins.toString()
+                                customSecondsOption = if (currSecs >= 15) 30 else 0
+                                showCustomTimeDialog = true
+                            },
+                            shape = RoundedCornerShape(14.dp),
+                            color = BikePrimary.copy(alpha = 0.08f),
+                            modifier = Modifier.testTag("bike_time_readout_surface")
+                        ) {
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.padding(horizontal = 14.dp, vertical = 6.dp)
+                            ) {
+                                Row(verticalAlignment = Alignment.Bottom) {
+                                    Text(
+                                        text = "$currMins",
+                                        style = MaterialTheme.typography.displaySmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = BikePrimary
+                                    )
+                                    Text(
+                                        text = "m",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = BikePrimary,
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                    Spacer(modifier = Modifier.width(6.dp))
+                                    Text(
+                                        text = String.format("%02d", currSecs),
+                                        style = MaterialTheme.typography.displaySmall,
+                                        fontWeight = FontWeight.ExtraBold,
+                                        color = if (currSecs > 0) BikePrimary else BikePrimary.copy(alpha = 0.45f)
+                                    )
+                                    Text(
+                                        text = "s",
+                                        style = MaterialTheme.typography.titleMedium,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (currSecs > 0) BikePrimary else BikePrimary.copy(alpha = 0.45f),
+                                        modifier = Modifier.padding(bottom = 4.dp)
+                                    )
+                                }
                                 Text(
-                                    text = "${formState.bikeMinutes}",
-                                    style = MaterialTheme.typography.displayMedium,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = BikePrimary
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "minutes",
-                                    style = MaterialTheme.typography.titleMedium,
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 8.dp)
+                                    text = "Tap to type exact",
+                                    style = MaterialTheme.typography.labelSmall,
+                                    color = MaterialTheme.colorScheme.outline
                                 )
                             }
                         }
 
-                        IconButton(
-                            onClick = { onAdjustBikeMinutes(5) },
+                        // Plus Steppers
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            FilledTonalButton(
+                                onClick = { onAdjustBikeMinutes(0.5f) },
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .testTag("bike_plus_30s_button"),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = BikePrimary.copy(alpha = 0.18f),
+                                    contentColor = BikePrimary
+                                ),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("+30s", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            }
+                            FilledTonalButton(
+                                onClick = { onAdjustBikeMinutes(1f) },
+                                modifier = Modifier
+                                    .height(44.dp)
+                                    .testTag("bike_plus_1m_button"),
+                                colors = ButtonDefaults.filledTonalButtonColors(
+                                    containerColor = BikePrimary.copy(alpha = 0.18f),
+                                    contentColor = BikePrimary
+                                ),
+                                contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                            ) {
+                                Text("+1m", fontWeight = FontWeight.Bold, style = MaterialTheme.typography.labelMedium)
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Secondary adjustments: 5m quick buttons & direct :00s / :30s toggle chips
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OutlinedButton(
+                            onClick = { onAdjustBikeMinutes(-5f) },
                             modifier = Modifier
-                                .size(48.dp)
-                                .background(MaterialTheme.colorScheme.surfaceVariant, CircleShape)
-                                .testTag("bike_plus_5_button")
+                                .height(34.dp)
+                                .testTag("bike_minus_5_button"),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
                         ) {
-                            Icon(
-                                imageVector = Icons.Default.Add,
-                                contentDescription = "Increase bike minutes",
-                                tint = MaterialTheme.colorScheme.onSurface
+                            Text("-5 min", style = MaterialTheme.typography.labelSmall)
+                        }
+
+                        // Quick 00 / 30 second chunk toggle
+                        Row(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Seconds:",
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.outline
                             )
+                            FilterChip(
+                                selected = currSecs == 0,
+                                onClick = {
+                                    onBikeMinutesChanged(currMins.toFloat())
+                                },
+                                label = { Text(":00") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = BikePrimary,
+                                    selectedLabelColor = Color.White
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .testTag("chip_sec_00")
+                            )
+                            FilterChip(
+                                selected = currSecs == 30,
+                                onClick = {
+                                    onBikeMinutesChanged(currMins.toFloat() + 0.5f)
+                                },
+                                label = { Text(":30") },
+                                colors = FilterChipDefaults.filterChipColors(
+                                    selectedContainerColor = BikePrimary,
+                                    selectedLabelColor = Color.White
+                                ),
+                                modifier = Modifier
+                                    .height(32.dp)
+                                    .testTag("chip_sec_30")
+                            )
+                        }
+
+                        OutlinedButton(
+                            onClick = { onAdjustBikeMinutes(5f) },
+                            modifier = Modifier
+                                .height(34.dp)
+                                .testTag("bike_plus_5_button"),
+                            contentPadding = androidx.compose.foundation.layout.PaddingValues(horizontal = 8.dp)
+                        ) {
+                            Text("+5 min", style = MaterialTheme.typography.labelSmall)
                         }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
 
-                    // Slider for quick smooth adjustments
+                    // Slider snapped to 30-second chunks (0.5 minute steps)
                     Slider(
-                        value = formState.bikeMinutes.toFloat(),
-                        onValueChange = { onBikeMinutesChanged(it.toInt()) },
-                        valueRange = 5f..120f,
-                        steps = 22, // 5 min increments
+                        value = formState.bikeMinutes,
+                        onValueChange = {
+                            val snapped = (it * 2f).roundToInt() / 2f
+                            onBikeMinutesChanged(snapped)
+                        },
+                        valueRange = 0.5f..120f,
                         colors = SliderDefaults.colors(
                             thumbColor = BikePrimary,
                             activeTrackColor = BikePrimary
@@ -308,9 +452,18 @@ fun LogScreen(
                             .testTag("bike_minutes_slider")
                     )
 
-                    Spacer(modifier = Modifier.height(8.dp))
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text("30 sec", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        Text("30-sec intervals", style = MaterialTheme.typography.labelSmall, color = BikePrimary, fontWeight = FontWeight.Bold)
+                        Text("120 min", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                    }
 
-                    // Quick Preset Chips
+                    Spacer(modifier = Modifier.height(10.dp))
+
+                    // Quick Preset Chips (including 30s interval workouts)
                     Text(
                         text = "Quick Presets:",
                         style = MaterialTheme.typography.labelSmall,
@@ -322,23 +475,117 @@ fun LogScreen(
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp)
                     ) {
-                        val presets = listOf(15, 20, 30, 45, 60, 90)
-                        presets.forEach { preset ->
-                            val isSelected = formState.bikeMinutes == preset
+                        val presets = listOf(
+                            Pair(15f, "15 min"),
+                            Pair(20f, "20 min"),
+                            Pair(22.5f, "22m 30s"),
+                            Pair(30f, "30 min"),
+                            Pair(45f, "45 min"),
+                            Pair(60f, "60 min")
+                        )
+                        presets.forEach { (presetValue, presetLabel) ->
+                            val isSelected = formState.bikeMinutes == presetValue
                             FilterChip(
                                 selected = isSelected,
-                                onClick = { onBikeMinutesChanged(preset) },
-                                label = { Text("$preset min") },
+                                onClick = { onBikeMinutesChanged(presetValue) },
+                                label = { Text(presetLabel) },
                                 colors = FilterChipDefaults.filterChipColors(
                                     selectedContainerColor = BikePrimary.copy(alpha = 0.2f),
                                     selectedLabelColor = BikePrimary
                                 ),
-                                modifier = Modifier.testTag("preset_bike_$preset")
+                                modifier = Modifier.testTag("preset_bike_${presetLabel.replace(" ", "_")}")
                             )
                         }
                     }
                 }
             }
+        }
+
+        // Custom Exact Time Dialog
+        if (showCustomTimeDialog) {
+            AlertDialog(
+                onDismissRequest = { showCustomTimeDialog = false },
+                title = {
+                    Row(verticalAlignment = Alignment.CenterVertically) {
+                        Icon(
+                            imageVector = Icons.AutoMirrored.Filled.DirectionsBike,
+                            contentDescription = null,
+                            tint = BikePrimary,
+                            modifier = Modifier.size(24.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Set Exact Bike Time")
+                    }
+                },
+                text = {
+                    Column {
+                        Text(
+                            text = "Enter workout duration in minutes and 30-second chunks:",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                        Spacer(modifier = Modifier.height(12.dp))
+                        OutlinedTextField(
+                            value = customMinutesInput,
+                            onValueChange = { customMinutesInput = it.filter { ch -> ch.isDigit() }.take(3) },
+                            label = { Text("Minutes") },
+                            placeholder = { Text("e.g. 22") },
+                            keyboardOptions = androidx.compose.foundation.text.KeyboardOptions(
+                                keyboardType = androidx.compose.ui.text.input.KeyboardType.Number
+                            ),
+                            singleLine = true,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .testTag("custom_bike_minutes_input")
+                        )
+                        Spacer(modifier = Modifier.height(14.dp))
+                        Text(
+                            text = "Seconds (30s chunks):",
+                            style = MaterialTheme.typography.labelMedium,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            listOf(0, 30).forEach { secOption ->
+                                val isSel = customSecondsOption == secOption
+                                FilterChip(
+                                    selected = isSel,
+                                    onClick = { customSecondsOption = secOption },
+                                    label = { Text(if (secOption == 0) ":00 sec" else ":30 sec") },
+                                    colors = FilterChipDefaults.filterChipColors(
+                                        selectedContainerColor = BikePrimary,
+                                        selectedLabelColor = Color.White
+                                    ),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .testTag("custom_seconds_$secOption")
+                                )
+                            }
+                        }
+                    }
+                },
+                confirmButton = {
+                    Button(
+                        onClick = {
+                            val parsedMin = customMinutesInput.toIntOrNull() ?: 0
+                            val finalMins = DurationUtils.fromMinutesAndSeconds(parsedMin, customSecondsOption)
+                            onBikeMinutesChanged(finalMins)
+                            showCustomTimeDialog = false
+                        },
+                        modifier = Modifier.testTag("apply_custom_time_button")
+                    ) {
+                        Text("Set Time")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCustomTimeDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
 
         Spacer(modifier = Modifier.height(16.dp))

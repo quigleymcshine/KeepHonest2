@@ -37,6 +37,7 @@ import com.example.ui.theme.BikePrimary
 import com.example.ui.theme.DrinkPrimary
 import com.example.ui.theme.SoberGreen
 import com.example.util.DateUtils
+import com.example.util.DurationUtils
 
 @Composable
 fun DayLogCard(
@@ -116,7 +117,7 @@ fun DayLogCard(
                 Surface(
                     modifier = Modifier.weight(1f),
                     shape = RoundedCornerShape(12.dp),
-                    color = if (log.bikedToday && log.bikeMinutes > 0) {
+                    color = if (log.bikedToday && log.bikeMinutes > 0f) {
                         BikePrimary.copy(alpha = 0.12f)
                     } else {
                         MaterialTheme.colorScheme.surfaceVariant
@@ -128,7 +129,7 @@ fun DayLogCard(
                     ) {
                         Surface(
                             shape = CircleShape,
-                            color = if (log.bikedToday && log.bikeMinutes > 0) BikePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
+                            color = if (log.bikedToday && log.bikeMinutes > 0f) BikePrimary else MaterialTheme.colorScheme.outline.copy(alpha = 0.3f),
                             modifier = Modifier.size(28.dp)
                         ) {
                             androidx.compose.foundation.layout.Box(contentAlignment = Alignment.Center) {
@@ -143,10 +144,10 @@ fun DayLogCard(
                         Spacer(modifier = Modifier.width(8.dp))
                         Column {
                             Text(
-                                text = if (log.bikedToday && log.bikeMinutes > 0) "${log.bikeMinutes} min" else "Rest Day",
+                                text = if (log.bikedToday && log.bikeMinutes > 0f) DurationUtils.formatCompact(log.bikeMinutes) else "Rest Day",
                                 style = MaterialTheme.typography.bodyMedium,
                                 fontWeight = FontWeight.Bold,
-                                color = if (log.bikedToday && log.bikeMinutes > 0) BikePrimary else MaterialTheme.colorScheme.onSurfaceVariant
+                                color = if (log.bikedToday && log.bikeMinutes > 0f) BikePrimary else MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
                                 text = if (log.bikedToday) "Bike rode" else "No bike",

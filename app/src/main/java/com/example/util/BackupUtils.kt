@@ -21,7 +21,7 @@ object BackupUtils {
             sb.append(escapeCsv(log.date)).append(",")
             sb.append(log.epochDay).append(",")
             sb.append(log.bikedToday).append(",")
-            sb.append(log.bikeMinutes).append(",")
+            sb.append(DurationUtils.formatCsv(log.bikeMinutes)).append(",")
             sb.append(log.drinkCount).append(",")
             sb.append(escapeCsv(log.drinkNotes)).append(",")
             sb.append(escapeCsv(log.notes)).append(",")
@@ -38,7 +38,11 @@ object BackupUtils {
                 put("date", log.date)
                 put("epochDay", log.epochDay)
                 put("bikedToday", log.bikedToday)
-                put("bikeMinutes", log.bikeMinutes)
+                if (log.bikeMinutes % 1f == 0f) {
+                    put("bikeMinutes", log.bikeMinutes.toInt())
+                } else {
+                    put("bikeMinutes", log.bikeMinutes.toDouble())
+                }
                 put("drinkCount", log.drinkCount)
                 put("drinkNotes", log.drinkNotes)
                 put("notes", log.notes)
@@ -66,7 +70,7 @@ object BackupUtils {
             val date = obj.getString("date")
             val epochDay = if (obj.has("epochDay")) obj.getLong("epochDay") else DateUtils.toEpochDay(date)
             val bikedToday = obj.optBoolean("bikedToday", false)
-            val bikeMinutes = obj.optInt("bikeMinutes", 0)
+            val bikeMinutes = if (obj.has("bikeMinutes")) obj.optDouble("bikeMinutes", 0.0).toFloat() else 0f
             val drinkCount = obj.optInt("drinkCount", 0)
             val drinkNotes = obj.optString("drinkNotes", "")
             val notes = obj.optString("notes", "")

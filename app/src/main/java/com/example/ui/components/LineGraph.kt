@@ -46,6 +46,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.util.DateUtils
+import com.example.util.DurationUtils
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -113,10 +114,13 @@ fun LineGraph(
 
                 if (items.isNotEmpty()) {
                     val avg = items.map { it.value }.average().toFloat()
-                    val maxVal = items.maxOfOrNull { it.value } ?: 0f
-                    val displayAvg = if (isIntegerUnits) String.format("%.1f", avg) else avg.roundToInt().toString()
+                    val displayAvgText = if (unitLabel == "min") {
+                        DurationUtils.formatCompact(avg)
+                    } else {
+                        "${String.format("%.1f", avg)} $unitLabel"
+                    }
                     Text(
-                        text = "Avg: $displayAvg $unitLabel",
+                        text = "Avg: $displayAvgText",
                         style = MaterialTheme.typography.bodySmall,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -147,13 +151,18 @@ fun LineGraph(
                             style = MaterialTheme.typography.labelMedium,
                             fontWeight = FontWeight.SemiBold
                         )
-                        val formattedVal = if (isIntegerUnits) {
-                            selectedItem.value.roundToInt().toString()
+                        val formattedValText = if (unitLabel == "min") {
+                            DurationUtils.formatCompact(selectedItem.value)
                         } else {
-                            String.format("%.1f", selectedItem.value)
+                            val numStr = if (isIntegerUnits) {
+                                selectedItem.value.roundToInt().toString()
+                            } else {
+                                String.format("%.1f", selectedItem.value)
+                            }
+                            "$numStr $unitLabel"
                         }
                         Text(
-                            text = "$formattedVal $unitLabel",
+                            text = formattedValText,
                             style = MaterialTheme.typography.titleSmall,
                             fontWeight = FontWeight.Bold,
                             color = lineColor

@@ -19,6 +19,7 @@ import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlin.math.max
+import kotlin.math.roundToInt
 
 enum class AppScreen {
     LOG,
@@ -42,12 +43,12 @@ enum class ChartFilter(val label: String) {
 }
 
 data class HabitStatistics(
-    val totalBikeMinutes: Int = 0,
+    val totalBikeMinutes: Float = 0f,
     val totalRides: Int = 0,
     val avgBikeMinutesPerRide: Float = 0f,
     val avgBikeMinutesOverall: Float = 0f,
     val currentRideStreak: Int = 0,
-    val bestRideMinutes: Int = 0,
+    val bestRideMinutes: Float = 0f,
     val totalDrinks: Int = 0,
     val avgDrinksPerDay: Float = 0f,
     val avgDrinksPerWeek: Float = 0f,
@@ -60,7 +61,7 @@ data class HabitStatistics(
 data class LogFormState(
     val date: String = DateUtils.getTodayDate(),
     val bikedToday: Boolean = false,
-    val bikeMinutes: Int = 30,
+    val bikeMinutes: Float = 30f,
     val drinkCount: Int = 0,
     val drinkNotes: String = "",
     val notes: String = "",
@@ -175,7 +176,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
                 _logFormState.value = LogFormState(
                     date = dateStr,
                     bikedToday = false,
-                    bikeMinutes = 30, // Default preset when user enables bike
+                    bikeMinutes = 30f, // Default preset when user enables bike
                     drinkCount = 0,   // Default sober / 0 drinks
                     drinkNotes = "",
                     notes = "",
@@ -189,24 +190,34 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         _logFormState.update { current ->
             current.copy(
                 bikedToday = biked,
-                bikeMinutes = if (biked && current.bikeMinutes <= 0) 30 else current.bikeMinutes
+                bikeMinutes = if (biked && current.bikeMinutes <= 0f) 30f else current.bikeMinutes
+            )
+        }
+    }
+
+    fun setBikeMinutes(minutes: Float) {
+        // Snap to nearest 30-second (0.5 minute) chunk
+        val snapped = (minutes * 2f).roundToInt() / 2f
+        val clamped = snapped.coerceIn(0f, 360f)
+        _logFormState.update { current ->
+            current.copy(
+                bikeMinutes = clamped,
+                bikedToday = clamped > 0f
             )
         }
     }
 
     fun setBikeMinutes(minutes: Int) {
-        val coerced = minutes.coerceIn(0, 360)
-        _logFormState.update { current ->
-            current.copy(
-                bikeMinutes = coerced,
-                bikedToday = coerced > 0
-            )
-        }
+        setBikeMinutes(minutes.toFloat())
     }
 
-    fun adjustBikeMinutes(delta: Int) {
-        val newMin = (_logFormState.value.bikeMinutes + delta).coerceIn(0, 360)
-        setBikeMinutes(newMin)
+    fun adjustBikeMinutes(deltaMinutes: Float) {
+        val current = _logFormState.value.bikeMinutes
+        setBikeMinutes(current + deltaMinutes)
+    }
+
+    fun adjustBikeMinutes(deltaMinutes: Int) {
+        adjustBikeMinutes(deltaMinutes.toFloat())
     }
 
     fun setDrinkCount(count: Int) {
@@ -232,12 +243,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
     fun saveCurrentLog() {
         val state = _logFormState.value
         val epochDay = DateUtils.toEpochDay(state.date)
-        val minutes = if (state.bikedToday) state.bikeMinutes else 0
+        val minutes = if (state.bikedToday) state.bikeMinutes else 0f
 
         val log = DailyHabitLog(
             date = state.date,
             epochDay = epochDay,
-            bikedToday = state.bikedToday && minutes > 0,
+            bikedToday = state.bikedToday && minutes > 0f,
             bikeMinutes = minutes,
             drinkCount = state.drinkCount,
             drinkNotes = state.drinkNotes.trim(),
@@ -388,12 +399,12 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
 
         val filteredLogs = logs.filter { it.epochDay in startEpoch..todayEpoch }
 
-        val totalBikeMin = filteredLogs.sumOf { it.bikeMinutes }
-        val rides = filteredLogs.filter { it.bikedToday && it.bikeMinutes > 0 }
+        val totalBikeMin = filteredLogs.sumOf { it.bikeMinutes.toDouble() }.toFloat()
+        val rides = filteredLogs.filter { it.bikedToday && it.bikeMinutes > 0f }
         val totalRidesCount = rides.size
-        val avgBikeMinPerRide = if (totalRidesCount > 0) totalBikeMin.toFloat() / totalRidesCount else 0f
-        val avgBikeMinOverall = if (range.days > 0) totalBikeMin.toFloat() / range.days else 0f
-        val bestRide = filteredLogs.maxOfOrNull { it.bikeMinutes } ?: 0
+        val avgBikeMinPerRide = if (totalRidesCount > 0) totalBikeMin / totalRidesCount else 0f
+        val avgBikeMinOverall = if (range.days > 0) totalBikeMin / range.days else 0f
+        val bestRide = filteredLogs.maxOfOrNull { it.bikeMinutes } ?: 0f
 
         val totalDrinksCount = filteredLogs.sumOf { it.drinkCount }
         val avgDrinks = if (range.days > 0) totalDrinksCount.toFloat() / range.days else 0f
@@ -410,7 +421,7 @@ class MainViewModel(application: Application) : AndroidViewModel(application) {
         if (logMap[checkEpoch]?.bikedToday != true) {
             checkEpoch--
         }
-        while (logMap[checkEpoch]?.bikedToday == true && (logMap[checkEpoch]?.bikeMinutes ?: 0) > 0) {
+        while (logMap[checkEpoch]?.bikedToday == true && (logMap[checkEpoch]?.bikeMinutes ?: 0f) > 0f) {
             currentRideStreak++
             checkEpoch--
         }

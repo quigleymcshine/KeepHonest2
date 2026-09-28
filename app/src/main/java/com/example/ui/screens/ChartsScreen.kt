@@ -51,6 +51,7 @@ import com.example.ui.theme.BikePrimary
 import com.example.ui.theme.DrinkAccent
 import com.example.ui.theme.DrinkPrimary
 import com.example.ui.theme.SoberGreen
+import com.example.util.DurationUtils
 
 @Composable
 fun ChartsScreen(
@@ -139,7 +140,7 @@ fun ChartsScreen(
                 gradientColor = BikeAccent,
                 unitLabel = "min",
                 title = "Exercise Bike (Minutes / Day)",
-                isIntegerUnits = true
+                isIntegerUnits = false
             )
 
             Spacer(modifier = Modifier.height(12.dp))
@@ -151,7 +152,7 @@ fun ChartsScreen(
             ) {
                 StatCard(
                     title = "Total Time",
-                    value = "${statistics.totalBikeMinutes}m",
+                    value = DurationUtils.formatCompact(statistics.totalBikeMinutes),
                     subtitle = "${statistics.totalRides} rides",
                     icon = Icons.Default.Timer,
                     iconColor = BikePrimary,
@@ -160,8 +161,8 @@ fun ChartsScreen(
 
                 StatCard(
                     title = "Avg / Ride",
-                    value = "${statistics.avgBikeMinutesPerRide.toInt()}m",
-                    subtitle = "Best: ${statistics.bestRideMinutes}m",
+                    value = DurationUtils.formatCompact(statistics.avgBikeMinutesPerRide),
+                    subtitle = "Best: ${DurationUtils.formatCompact(statistics.bestRideMinutes)}",
                     icon = Icons.Default.Speed,
                     iconColor = BikePrimary,
                     badgeText = if (statistics.currentRideStreak > 1) "${statistics.currentRideStreak}d streak!" else null,
@@ -323,7 +324,7 @@ fun ChartsScreen(
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Text(
-                    text = "• Logged ${statistics.totalRides} bike session${if (statistics.totalRides == 1) "" else "s"} totaling ${statistics.totalBikeMinutes} minutes.",
+                    text = "• Logged ${statistics.totalRides} bike session${if (statistics.totalRides == 1) "" else "s"} totaling ${DurationUtils.formatDetailed(statistics.totalBikeMinutes)}.",
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurface
                 )
